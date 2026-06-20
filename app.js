@@ -1,404 +1,425 @@
 /* =====================================================================
-   QİYMƏTLƏNDİRMƏ MƏRKƏZİ — Tətbiq məntiqi
+   AN Psixoloji Mərkəzi — Tətbiq məntiqi (AZ / RU / EN)
+   Məzmun data.js (window.DATA) faylındadır.
    ===================================================================== */
+(function(){
+"use strict";
+var D = window.DATA;
+var LANG = "az";
+var STATE = { obs:{}, official:{}, form:{} };   // yaddaş (localStorage yox)
+var CUR = { view:"home", test:null, mode:"form" };
+var LAST_REPORT_TEXT = "";
 
-document.getElementById('yr').textContent = new Date().getFullYear();
+/* test → şəkil uyğunlaşması */
+var IMG = { ados2:"an1.jpg", adir:"an3.jpg", wiscv:"an2.jpg", vineland3:"an5.jpg", leiter3:"an6.jpg", sp2:"an4.jpg" };
+var ORDER = ["ados2","adir","wiscv","vineland3","leiter3","sp2"];
 
-/* ---- KONFİQURASİYA: bunları öz mərkəzinizə uyğun dəyişin ---- */
-const CONFIG = {
-  centerName: "AN Psixoloji Dəstək və Reabilitasiya Mərkəzi",
-  instagramUrl: "https://www.instagram.com/an_psixologiyamerkezi",
-  defaultWA: "994554157215"   // mərkəzin WhatsApp nömrəsi (valideyn nömrəsi boş qalsa istifadə olunur)
+/* ---- i18n köməkçiləri ---- */
+function t(key){ var o=D.i18n[key]; return o? (o[LANG]||o.az) : key; }
+function L(obj){ return obj? (obj[LANG]||obj.az||"") : ""; }
+
+var BRAND_SUB = { az:"Diaqnostika", ru:"Диагностика", en:"Diagnostics" };
+
+/* sahə izahı şablonları (orijinal, üçdilli) */
+var EXPL = {
+  ok:{   az:"bu sahədə müşahidə olunan çətinlik yoxdur — güclü tərəf kimi görünür.",
+         ru:"в этой области трудностей не наблюдается — выглядит как сильная сторона.",
+         en:"no difficulty observed in this area — appears to be a strength." },
+  warn:{ az:"yüngül çətinlik müşahidə olunur; məqsədyönlü dəstək faydalı olar.",
+         ru:"наблюдаются лёгкие трудности; целенаправленная поддержка будет полезна.",
+         en:"mild difficulty observed; targeted support would be helpful." },
+  high:{ az:"orta səviyyəli çətinlik var; hədəflənmiş müdaxilə tövsiyə olunur.",
+         ru:"умеренные трудности; рекомендуется целенаправленное вмешательство.",
+         en:"moderate difficulty; targeted intervention is recommended." },
+  crit:{ az:"əhəmiyyətli çətinlik müşahidə olunur; prioritet diqqət lazımdır.",
+         ru:"значительные трудности; требуется приоритетное внимание.",
+         en:"significant difficulty observed; priority attention is needed." }
 };
-document.getElementById('igLink').href = CONFIG.instagramUrl;
-
-/* qiymətləndirmə vəziyyəti: testId -> {itemId:val} */
-const STATE = {};
-let LAST_REPORT_TEXT = "";
-
-/* ----------------- İKONLAR ----------------- */
-const I = {
-  badge:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 1.8 3-.2 1 2.8 2.6 1.5-.8 2.9.8 2.9-2.6 1.5-1 2.8-3-.2L12 22l-2.4-1.8-3 .2-1-2.8L3 13.8l.8-2.9L3 8l2.6-1.5 1-2.8 3 .2L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  layers:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l9 5-9 5-9-5 9-5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M3 13l9 5 9-5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
-  chart:'<svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
-  family:'<svg viewBox="0 0 24 24" fill="none"><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="17" cy="9" r="2.4" stroke="currentColor" stroke-width="1.5"/><path d="M3 20c0-3 2.2-5 5-5s5 2 5 5M14 20c0-2.4 1.4-4 3-4s3 1.6 3 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
-  share:'<svg viewBox="0 0 24 24" fill="none"><circle cx="6" cy="12" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="6" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="18" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6" stroke="currentColor" stroke-width="1.5"/></svg>',
-  shield:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
-  doc:'<svg viewBox="0 0 24 24" fill="none"><path d="M6 2h8l4 4v16H6V2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 2v4h4M9 13h6M9 17h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
-  user:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.5"/><path d="M5 20c0-3.6 3-6 7-6s7 2.4 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
-  stetho:'<svg viewBox="0 0 24 24" fill="none"><path d="M6 3v5a4 4 0 008 0V3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10 16a5 5 0 0010 0v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="20" cy="11" r="2" stroke="currentColor" stroke-width="1.5"/></svg>',
-  list:'<svg viewBox="0 0 24 24" fill="none"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
-  book:'<svg viewBox="0 0 24 24" fill="none"><path d="M4 4h7v16H4zM13 4h7v16h-7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
-  arrow:'<svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  back:'<svg viewBox="0 0 24 24" fill="none"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  age:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
-  target:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>',
-  heart:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 20s-7-4.3-7-9.3A3.7 3.7 0 0112 8a3.7 3.7 0 017 2.7c0 5-7 9.3-7 9.3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
-  save:'<svg viewBox="0 0 24 24" fill="none"><path d="M5 3h11l3 3v15H5V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 3v5h7M8 21v-6h8v6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
-  wa:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 00-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-2.8.7.8-2.7-.2-.3A8 8 0 1112 20zm4.4-5.7c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.5 6.5 0 01-1.9-1.2 7.3 7.3 0 01-1.4-1.7c-.1-.2 0-.4.1-.5l.4-.4.2-.4v-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a1 1 0 00-.7.3 3 3 0 00-.9 2.2 5.2 5.2 0 001.1 2.7 11.9 11.9 0 004.6 4c.6.3 1.1.4 1.5.5a3.6 3.6 0 001.6.1 2.7 2.7 0 001.8-1.3 2.2 2.2 0 00.2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg>',
-  print:'<svg viewBox="0 0 24 24" fill="none"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M8 14h8v7H8v-7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>'
+var DIAG = {
+  intro:{ az:"Aşağıdakı sahələrdə daha yüksək çətinlik müşahidə olundu. Bunlar diaqnoz deyil — mütəxəssis üçün diqqət nöqtələridir:",
+          ru:"В следующих областях наблюдались более высокие трудности. Это не диагноз, а точки внимания для специалиста:",
+          en:"Higher difficulty was observed in the following areas. These are not a diagnosis — they are points of attention for the specialist:" },
+  none:{  az:"Müşahidə bəndləri üzrə əhəmiyyətli çətinlik qeyd olunmadı. Yenə də klinik mülahizə və rəsmi bal əsasdır.",
+          ru:"По пунктам наблюдения значительных трудностей не отмечено. Тем не менее основой остаются клиническое суждение и официальный балл.",
+          en:"No significant difficulty was flagged across the observation items. Clinical judgment and the official score remain primary." }
 };
 
-/* ----------------- NAVİQASİYA ----------------- */
+/* ---- SVG ikonlar ---- */
+var ICON = {
+  shield:'<path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  report:'<rect x="5" y="3" width="14" height="18" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  clock:'<circle cx="12" cy="12" r="8.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  share:'<circle cx="6" cy="12" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="6" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="18" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M8.1 11l7.8-3.6M8.1 13l7.8 3.6" stroke="currentColor" stroke-width="1.7"/>',
+  globe:'<circle cx="12" cy="12" r="8.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.8 12h16.4M12 3.8c2.2 2.3 3.3 5.1 3.3 8.2S14.2 17.9 12 20.2C9.8 17.9 8.7 15.1 8.7 12S9.8 6.1 12 3.8z" stroke="currentColor" stroke-width="1.7"/>',
+  heart:'<path d="M12 20s-7-4.4-7-9.5A4.2 4.2 0 0112 8a4.2 4.2 0 017 2.5C19 15.6 12 20 12 20z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  book:'<path d="M5 4h9a3 3 0 013 3v13a3 3 0 00-3-3H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  list:'<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  gauge:'<path d="M5 18a8 8 0 1114 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 18l4-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  user:'<circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.7"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  badge:'<circle cx="12" cy="9" r="5" stroke="currentColor" stroke-width="1.7"/><path d="M8.5 13.5L7 21l5-2.5L17 21l-1.5-7.5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.7" stroke="currentColor" stroke-width="1.7"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  back:'<path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  wa:'<path d="M3 21l1.6-4A8 8 0 1112 20a8 8 0 01-4-1l-5 2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  dl:'<path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  print:'<path d="M7 8V4h10v4M7 18H5a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2h-2M7 14h10v6H7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  edit:'<path d="M4 20h4L18 10l-4-4L4 16v4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  chev:'<path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
+};
+function svg(name, cls){ return '<svg viewBox="0 0 24 24" fill="none"'+(cls?' class="'+cls+'"':'')+'>'+ICON[name]+'</svg>'; }
+
+/* ============ STATİK MƏTNLƏRİN TƏTBİQİ ============ */
+function applyStatic(){
+  document.documentElement.lang = LANG;
+  document.title = t("site_title");
+  var els = document.querySelectorAll("[data-i18n]");
+  for(var i=0;i<els.length;i++){
+    var k = els[i].getAttribute("data-i18n");
+    if(!k) continue;
+    if(k==="brand"){ els[i].innerHTML = t("brand")+'<small>'+BRAND_SUB[LANG]+'</small>'; }
+    else els[i].textContent = t(k);
+  }
+  var yr=document.getElementById("yr"); if(yr) yr.textContent=new Date().getFullYear();
+}
+
+/* ============ NAVİQASİYA ============ */
+function buildNav(){
+  var nav=document.getElementById("navLinks"); nav.innerHTML="";
+  var home=document.createElement("button");
+  home.textContent=t("nav_home"); home.setAttribute("data-nav","home");
+  home.onclick=function(){ go("home"); };
+  nav.appendChild(home);
+  ORDER.forEach(function(id){
+    var b=document.createElement("button");
+    b.textContent=D.tests[id].name; b.setAttribute("data-nav",id);
+    b.onclick=function(){ go("test",id); };
+    nav.appendChild(b);
+  });
+  markNav();
+}
+function markNav(){
+  var key = CUR.view==="home" ? "home" : CUR.test;
+  var bs=document.querySelectorAll("#navLinks button");
+  for(var i=0;i<bs.length;i++) bs[i].classList.toggle("active", bs[i].getAttribute("data-nav")===key);
+}
 function go(view, testId){
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.getElementById('view-'+view).classList.add('active');
-  document.querySelectorAll('.nav-links button').forEach(b=>b.classList.remove('active'));
-  const navKey = view==='home' ? 'home' : testId;
-  const nb = document.querySelector('.nav-links button[data-nav="'+navKey+'"]');
-  if(nb) nb.classList.add('active');
-  document.getElementById('navLinks').classList.remove('open');
-  if(view==='test') renderTestPage(testId);
-  window.scrollTo({top:0,behavior:'smooth'});
+  CUR.view=view; if(testId) CUR.test=testId;
+  document.getElementById("navLinks").classList.remove("open");
+  document.getElementById("view-home").classList.toggle("active", view==="home");
+  document.getElementById("view-test").classList.toggle("active", view==="test");
+  if(view==="test"){ CUR.mode="form"; renderTestPage(CUR.test); }
+  markNav();
+  window.scrollTo({top:0,behavior:"smooth"});
 }
+window.go = go;
 
-/* ----------------- ANA SƏHİFƏ ----------------- */
+/* ============ ANA SƏHİFƏ ============ */
 function renderHome(){
-  const grid = document.getElementById('testGrid');
-  grid.innerHTML = Object.values(TESTS).map(t=>`
-    <article class="card">
-      <span class="bartop"></span>
-      <span class="tag">${t.name}</span>
-      <h3>${t.full.split(',')[0]}</h3>
-      <div class="full">${t.full}</div>
-      <p class="desc">${t.summary}</p>
-      <div class="meta">
-        <span class="pill">${I.age} ${t.age}</span>
-        <span class="pill">${I.layers} ${t.domains.length} sahə</span>
-      </div>
-      <button class="cta" onclick="go('test','${t.id}')">Testi aç ${I.arrow}</button>
-    </article>`).join('');
-
-  document.getElementById('whyGrid').innerHTML = WHY.map(w=>`
-    <div class="why-item">
-      <div class="why-ic">${I[w.ic]}</div>
-      <div><h4>${w.t}</h4><p>${w.d}</p></div>
-    </div>`).join('');
+  var grid=document.getElementById("testGrid"); grid.innerHTML="";
+  ORDER.forEach(function(id){
+    var x=D.tests[id];
+    var c=document.createElement("div"); c.className="card rv";
+    c.onclick=function(){ go("test",id); };
+    c.innerHTML=
+      '<div class="card-img" style="background-image:url(\'images/'+IMG[id]+'\')"><span class="card-badge">'+x.name+'</span></div>'+
+      '<div class="card-body">'+
+        '<h3>'+L(x.full).split(",")[0]+'</h3>'+
+        '<div class="full">'+x.name+'</div>'+
+        '<p class="desc">'+L(x.summary)+'</p>'+
+        '<div class="meta">'+
+          '<span class="chip">'+svg("clock")+L(x.age)+'</span>'+
+          '<span class="chip">'+svg("list")+x.domains.length+' '+t("areas")+'</span>'+
+        '</div>'+
+        '<button class="btn btn-primary">'+t("open_test")+svg("arrow")+'</button>'+
+      '</div>';
+    grid.appendChild(c);
+  });
+  var wg=document.getElementById("whyGrid"); wg.innerHTML="";
+  D.why.forEach(function(w){
+    var el=document.createElement("div"); el.className="why-card rv";
+    el.innerHTML='<div class="why-ic">'+svg(w.icon)+'</div><h3>'+L(w.t)+'</h3><p>'+L(w.d)+'</p>';
+    wg.appendChild(el);
+  });
+  observeReveal();
 }
 
-/* ----------------- TEST SƏHİFƏSİ ----------------- */
+/* ============ TEST SƏHİFƏSİ ============ */
 function renderTestPage(id){
-  const t = TESTS[id];
-  if(!STATE[id]) STATE[id] = {};
-  const page = document.getElementById('testPage');
+  var x=D.tests[id];
+  if(!STATE.obs[id]) STATE.obs[id]={};
+  if(!STATE.official[id]) STATE.official[id]={};
+  if(!STATE.form[id]) STATE.form[id]={};
+  var ins=x.instruction;
+  var html='<div class="tp">'+
+    '<button class="back" onclick="go(\'home\')">'+svg("back")+t("back")+'</button>'+
+    '<div class="tp-hero"><div class="tp-hero-bg" style="background-image:url(\'images/'+IMG[id]+'\')"></div>'+
+      '<div class="tp-hero-in">'+
+        '<div class="tag">'+x.name+'</div>'+
+        '<h2>'+L(x.full)+'</h2>'+
+        '<p class="sum">'+L(x.summary)+'</p>'+
+        '<span class="ages">'+svg("clock")+L(x.age)+'</span>'+
+      '</div></div>';
 
-  const instr = `
-    <details class="instr" open>
-      <summary>
-        <span class="ic">${I.book}</span>
-        Keçirilmə təlimatı
-        <span class="chev"><svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-      </summary>
-      <div class="instr-body">
-        <div class="instr-block"><h4><span class="num">1</span> Keçirilmə qaydası</h4>
-          <ul>${t.instruction.howto.map(x=>`<li>${x}</li>`).join('')}</ul></div>
-        <div class="instr-block"><h4><span class="num">2</span> Forma və metodlar</h4>
-          <ul>${t.instruction.methods.map(x=>`<li>${x}</li>`).join('')}</ul></div>
-        <div class="instr-block"><h4><span class="num">3</span> Son qiymətləndirmə qaydası</h4>
-          <ul>${t.instruction.scoring.map(x=>`<li>${x}</li>`).join('')}</ul></div>
-      </div>
-    </details>`;
+  /* təlimat */
+  html+='<div class="panel"><div class="panel-head"><span class="pic">'+svg("book")+'</span>'+
+    '<div><h3>'+t("howto")+'</h3><div class="sub">'+x.name+'</div></div></div>'+
+    '<div class="instr">'+
+      instrCol("howto", ins.howto)+
+      instrCol("methods", ins.methods)+
+      instrCol("scoring", ins.scoring)+
+    '</div></div>';
 
-  const idForm = `
-    <div class="panel">
-      <div class="panel-h"><div class="ic">${I.user}</div>
-        <div><h3>Uşaq və mütəxəssis məlumatları</h3><div class="sub">Hesabatda bu məlumatlar əks olunacaq</div></div></div>
-      <div class="field-grid">
-        <div class="field"><label>Uşağın adı</label><input id="f_cname" placeholder="Ad"></div>
-        <div class="field"><label>Uşağın soyadı</label><input id="f_csurname" placeholder="Soyad"></div>
-        <div class="field"><label>Uşağın yaşı</label><input id="f_cage" placeholder="məs. 7 yaş 4 ay"></div>
-      </div>
-      <div class="field-grid" style="margin-top:16px">
-        <div class="field"><label>Mütəxəssisin adı</label><input id="f_sname" placeholder="Ad"></div>
-        <div class="field"><label>Mütəxəssisin soyadı</label><input id="f_ssurname" placeholder="Soyad"></div>
-        <div class="field"><label>Peşə</label><select id="f_prof">${PROFESSIONS.map(p=>`<option>${p}</option>`).join('')}</select></div>
-      </div>
-      <div class="field-grid" style="margin-top:16px">
-        <div class="field"><label>Valideynin WhatsApp nömrəsi (göndərmək üçün)</label><input id="f_wa" placeholder="məs. 994501234567 (ölkə kodu ilə, +/0 olmadan)"></div>
-        <div class="field"><label>Qiymətləndirmə tarixi</label><input id="f_date" type="date"></div>
-      </div>
-    </div>`;
+  /* uşaq + mütəxəssis */
+  html+='<div class="panel"><div class="panel-head"><span class="pic">'+svg("user")+'</span><h3>'+t("child_info")+'</h3></div>'+
+    '<div class="form-grid">'+
+      field(id,"name","f_name")+field(id,"surname","f_surname")+
+      field(id,"age","f_age","number")+ '<div></div>'+
+    '</div>'+
+    '<div class="panel-head" style="margin-top:8px"><span class="pic">'+svg("badge")+'</span><h3>'+t("spec_info")+'</h3></div>'+
+    '<div class="form-grid">'+
+      field(id,"sname","f_spec_name")+field(id,"ssurname","f_spec_surname")+
+      profField(id)+
+      '<div class="field full-w"><label>'+t("f_wa")+'</label><input id="f_wa" placeholder="'+t("f_wa_ph")+'" value="'+(STATE.form[id].wa||"")+'"></div>'+
+    '</div></div>';
 
-  const assess = `
-    <div class="panel">
-      <div class="panel-h"><div class="ic">${I.list}</div>
-        <div><h3>Qiymətləndirmə</h3><div class="sub">Hər sahə üzrə müşahidələri qeyd edin və rəsmi balı daxil edin</div></div></div>
-      ${t.domains.map((d,di)=>renderDomain(id,d,di)).join('')}
-    </div>`;
+  /* rəsmi ballar */
+  html+='<div class="panel"><div class="panel-head"><span class="pic">'+svg("gauge")+'</span><h3>'+t("official_kicker")+'</h3></div>'+
+    '<div class="off-note">'+t("official_note")+'</div><div class="off-grid">';
+  x.official.forEach(function(o,i){
+    html+='<div class="off-box"><label>'+L(o.label)+'</label><div class="hint">'+L(o.hint)+'</div>'+
+      '<input data-off="'+i+'" value="'+(STATE.official[id][i]||"")+'" oninput="OFF(\''+id+'\','+i+',this.value)"></div>';
+  });
+  html+='</div></div>';
 
-  page.innerHTML = `
-    <div class="tp-top">
-      <button class="back" onclick="go('home')">${I.back} Ana səhifə</button>
-      <div class="tp-title">
-        <span class="tag">${t.name} · Mərkəzimizdə keçirilir</span>
-        <h2>${t.full.split(',')[0]}</h2>
-        <p>${t.summary}</p>
-      </div>
-    </div>
-    ${instr}
-    ${idForm}
-    ${assess}
-    <div class="run-bar">
-      <div class="prog">
-        <div class="ptxt" id="progTxt">Tamamlanma: 0%</div>
-        <div class="ptrack"><div class="pfill" id="progFill"></div></div>
-      </div>
-      <button class="btn-primary" onclick="showResult('${id}')">${I.chart} Nəticəni göstər</button>
-    </div>
-    <div id="reportArea">
-      <div class="empty">${I.doc}<h3>Hesabat hələ hazır deyil</h3><p>Qiymətləndirməni doldurub “Nəticəni göstər” düyməsini basın.</p></div>
-    </div>`;
+  /* müşahidə sahələri */
+  html+='<div class="panel"><div class="panel-head"><span class="pic">'+svg("eye")+'</span><h3>'+t("obs_kicker")+'</h3></div>'+
+    '<div class="obs-note">'+t("obs_note")+'</div>';
+  x.domains.forEach(function(d,di){
+    html+='<div class="domain'+(di===0?" open":"")+'" data-dom="'+d.id+'">'+
+      '<div class="domain-h" onclick="this.parentNode.classList.toggle(\'open\')">'+
+        '<span class="ix">'+(di+1)+'</span><h4>'+L(d.title)+'</h4>'+
+        '<span class="cnt">'+d.items.length+'</span><span class="chev">'+svg("chev")+'</span></div>'+
+      '<div class="domain-body">';
+    d.items.forEach(function(it){
+      var cur=STATE.obs[id][it.id];
+      html+='<div class="item"><p>'+L(it.t)+'</p><div class="opts">';
+      for(var v=0;v<4;v++){
+        var sel=(cur===v)?" sel":"";
+        html+='<button class="opt'+sel+'" data-v="'+v+'" onclick="PICK(\''+id+'\',\''+it.id+'\','+v+',this)">'+L(D.scale[v])+'</button>';
+      }
+      html+='</div></div>';
+    });
+    html+='</div></div>';
+  });
+  html+='</div>'; /* panel sonu */
 
-  // restore saved selections
-  restore(id);
+  /* run-bar */
+  html+='<div class="run-bar"><div class="wrap run-in">'+
+    '<div class="prog"><div class="prog-track"><div class="prog-fill" id="progFill"></div></div>'+
+    '<div class="prog-lbl" id="progLbl"></div></div>'+
+    '<button class="btn btn-primary" onclick="RESULT(\''+id+'\')">'+t("show_result")+svg("arrow")+'</button>'+
+    '</div></div>';
+
+  html+='</div>'; /* tp sonu */
+  document.getElementById("testPage").innerHTML=html;
   updateProgress(id);
 }
-
-function renderDomain(testId,d,di){
-  const t = TESTS[testId];
-  const off = t.official.filter(o=>o.id===d.id);
-  const offHtml = off.length ? `
-    <div class="official">
-      <div class="lbl">${I.target} Rəsmi standart bal (lisenziyalı dəstdən)</div>
-      ${off.map(o=>`<div class="row"><label>${o.label}</label><input data-off="${o.id}" placeholder="${o.ph}"></div>`).join('')}
-    </div>` : '';
-
-  return `
-    <div class="domain">
-      <div class="domain-h"><div class="idx">${di+1}</div>
-        <div><h4>${d.name}</h4><p>${d.hint}</p></div></div>
-      ${offHtml}
-      <div class="scale-legend">
-        <span><i style="background:var(--ok)"></i>0 çətinlik yox</span>
-        <span><i style="background:var(--warn)"></i>1 yüngül</span>
-        <span><i style="background:var(--high)"></i>2 orta</span>
-        <span><i style="background:var(--crit)"></i>3 əhəmiyyətli</span>
-      </div>
-      <div class="items">
-        ${d.items.map((q,qi)=>{
-          const key = d.id+'_'+qi;
-          return `<div class="item"><div class="q">${q}</div>
-            <div class="scale" data-key="${key}">
-              ${[0,1,2,3].map(v=>`<button data-v="${v}" onclick="pick('${testId}','${key}',${v},this)">${v}</button>`).join('')}
-            </div></div>`;
-        }).join('')}
-      </div>
-      <div class="notes-field"><label>Bu sahə üzrə müşahidə qeydi (ixtiyari)</label>
-        <textarea data-note="${d.id}" placeholder="Mütəxəssisin əlavə müşahidələri..."></textarea></div>
-    </div>`;
+function instrCol(key, arr){
+  var li=""; arr.forEach(function(s){ li+="<li>"+L(s)+"</li>"; });
+  return '<div class="instr-col"><h4>'+t(key)+'</h4><ul>'+li+'</ul></div>';
 }
-
-/* ----------------- SEÇİM ----------------- */
-function pick(testId,key,val,btn){
-  STATE[testId][key] = val;
-  const group = btn.parentElement;
-  group.querySelectorAll('button').forEach(b=>b.classList.remove('sel'));
-  btn.classList.add('sel');
-  updateProgress(testId);
+function field(id,fk,labelKey,type){
+  return '<div class="field"><label>'+t(labelKey)+'</label><input '+(type?'type="'+type+'" ':'')+
+    'data-f="'+fk+'" value="'+(STATE.form[id][fk]||"")+'" oninput="FRM(\''+id+'\',\''+fk+'\',this.value)"></div>';
 }
-
-function restore(testId){
-  const s = STATE[testId]||{};
-  Object.keys(s).forEach(key=>{
-    const g = document.querySelector(`.scale[data-key="${key}"]`);
-    if(g){ const b=g.querySelector(`button[data-v="${s[key]}"]`); if(b) b.classList.add('sel'); }
+function profField(id){
+  var opts='<option value="">—</option>';
+  D.professions.forEach(function(p,i){
+    var sel=(STATE.form[id].prof==String(i))?" selected":"";
+    opts+='<option value="'+i+'"'+sel+'>'+L(p)+'</option>';
   });
+  return '<div class="field"><label>'+t("f_profession")+'</label><select data-f="prof" onchange="FRM(\''+id+'\',\'prof\',this.value)">'+opts+'</select></div>';
 }
 
-function totalItems(testId){
-  return TESTS[testId].domains.reduce((a,d)=>a+d.items.length,0);
-}
-function updateProgress(testId){
-  const done = Object.keys(STATE[testId]||{}).length;
-  const total = totalItems(testId);
-  const pct = total? Math.round(done/total*100):0;
-  const pf=document.getElementById('progFill'), pt=document.getElementById('progTxt');
-  if(pf) pf.style.width=pct+'%';
-  if(pt) pt.textContent=`Tamamlanma: ${pct}%  (${done}/${total} bənd)`;
-}
+/* ---- input handler-lər ---- */
+window.PICK=function(id,itemId,v,btn){
+  STATE.obs[id][itemId]=v;
+  var sib=btn.parentNode.querySelectorAll(".opt");
+  for(var i=0;i<sib.length;i++) sib[i].classList.remove("sel");
+  btn.classList.add("sel");
+  updateProgress(id);
+};
+window.OFF=function(id,i,val){ STATE.official[id][i]=val; };
+window.FRM=function(id,fk,val){ STATE.form[id][fk]=val; };
+function captureWA(id){ var w=document.getElementById("f_wa"); if(w) STATE.form[id].wa=w.value; }
 
-/* ----------------- BAL → BAND ----------------- */
-function bandFor(avg){
-  if(avg<0.75) return {key:'ok', label:'Tipik / gözlənilən', color:'var(--ok)'};
-  if(avg<1.5)  return {key:'warn', label:'Yüngül çətinlik — izləmə', color:'var(--warn)'};
-  if(avg<2.25) return {key:'high', label:'Orta səviyyə çətinlik', color:'var(--high)'};
-  return {key:'crit', label:'Əhəmiyyətli çətinlik', color:'var(--crit)'};
-}
-function domainExplain(dName,band){
-  const m = {
-    ok:`“${dName}” sahəsində müşahidələr yaşa uyğun, gözlənilən hüdudlardadır. Hazırda xüsusi narahatlıq doğuran nümunə qeyd olunmayıb; mövcud güclü tərəfləri qoruyub inkişaf etdirmək tövsiyə olunur.`,
-    warn:`“${dName}” sahəsində yüngül çətinlik əlamətləri var. Bu, mütləq pozğunluq demək deyil, lakin müntəzəm izləmə və hədəfli dəstək faydalı olar.`,
-    high:`“${dName}” sahəsi orta səviyyədə çətinlik göstərir. Bu sahə müdaxilə planında prioritet kimi nəzərdən keçirilməlidir.`,
-    crit:`“${dName}” sahəsində əhəmiyyətli çətinlik müşahidə olunur. Bu sahə fərdi müdaxilə proqramında əsas hədəflərdən biri olmalı və rəsmi qiymətləndirmə ilə dəqiqləşdirilməlidir.`
-  };
-  return m[band.key];
+function totalItems(id){ return D.tests[id].domains.reduce(function(a,d){return a+d.items.length;},0); }
+function answered(id){ return Object.keys(STATE.obs[id]||{}).length; }
+function updateProgress(id){
+  var tot=totalItems(id), got=answered(id), pct=tot?Math.round(got/tot*100):0;
+  var f=document.getElementById("progFill"), l=document.getElementById("progLbl");
+  if(f) f.style.width=pct+"%";
+  if(l) l.textContent=got+"/"+tot+" — "+pct+"% "+t("progress");
 }
 
-/* ----------------- HESABAT ----------------- */
-function getField(id){ const e=document.getElementById(id); return e? e.value.trim():''; }
+/* ============ BAND MƏNTİQİ ============ */
+function bandFor(avg){ if(avg<0.6)return"ok"; if(avg<1.4)return"warn"; if(avg<2.2)return"high"; return"crit"; }
+var BANDLBL={ok:"band_ok",warn:"band_warn",high:"band_high",crit:"band_crit"};
+var BANDPCT={ok:18,warn:45,high:72,crit:95};
+var BANDCOL={ok:"var(--sage)",warn:"var(--gold)",high:"#D98324",crit:"var(--bordo)"};
 
-function showResult(testId){
-  const t = TESTS[testId];
-  const s = STATE[testId]||{};
-
-  // domen üzrə hesablama
-  const results = t.domains.map(d=>{
-    let sum=0,cnt=0;
-    d.items.forEach((q,qi)=>{ const k=d.id+'_'+qi; if(s[k]!==undefined){sum+=s[k];cnt++;} });
-    const avg = cnt? sum/cnt : 0;
-    const band = bandFor(avg);
-    const note = document.querySelector(`textarea[data-note="${d.id}"]`);
-    return {d, avg, band, answered:cnt, note: note? note.value.trim():''};
+function domainStats(id){
+  var x=D.tests[id], out=[];
+  x.domains.forEach(function(d){
+    var sum=0,n=0;
+    d.items.forEach(function(it){ var v=STATE.obs[id][it.id]; if(v!==undefined){sum+=v;n++;} });
+    if(n>0){ var avg=sum/n; out.push({title:L(d.title), avg:avg, band:bandFor(avg), n:n}); }
   });
-
-  const child = `${getField('f_cname')} ${getField('f_csurname')}`.trim()||'(qeyd edilməyib)';
-  const cage = getField('f_cage')||'—';
-  const spec = `${getField('f_sname')} ${getField('f_ssurname')}`.trim()||'(qeyd edilməyib)';
-  const prof = getField('f_prof')||'—';
-  const date = getField('f_date')|| new Date().toLocaleDateString('az');
-
-  // rəsmi ballar
-  const offVals = {};
-  document.querySelectorAll('[data-off]').forEach(i=>{ if(i.value.trim()) offVals[i.dataset.off]=i.value.trim(); });
-  const offRows = t.official.filter(o=>offVals[o.id]!==undefined);
-
-  // diqqət tələb edən sahələr
-  const flagged = results.filter(r=>r.band.key!=='ok');
-  const sorted = [...flagged].sort((a,b)=>b.avg-a.avg);
-
-  const reportHtml = `
-   <div class="report" id="reportCard">
-    <div class="rep-head">
-      <span class="rb"></span>
-      <span class="tag">${t.name} · ${CONFIG.centerName}</span>
-      <h2>Diaqnostik qiymətləndirmə hesabatı</h2>
-      <div class="who">${t.full}</div>
-      <div class="rep-meta">
-        <div><div class="k">Uşaq</div><div class="v">${child}</div></div>
-        <div><div class="k">Yaş</div><div class="v">${cage}</div></div>
-        <div><div class="k">Mütəxəssis</div><div class="v">${spec}</div></div>
-        <div><div class="k">Peşə</div><div class="v">${prof}</div></div>
-        <div><div class="k">Tarix</div><div class="v">${date}</div></div>
-      </div>
-    </div>
-    <div class="rep-body">
-
-      ${offRows.length?`
-      <div class="rep-sec">
-        <div class="sh"><div class="ic ic-blue">${I.target}</div><h3>Rəsmi standart ballar</h3></div>
-        <table class="score-table"><thead><tr><th>Göstərici</th><th>Bal</th></tr></thead>
-        <tbody>${offRows.map(o=>`<tr><td>${o.label}</td><td>${offVals[o.id]}</td></tr>`).join('')}</tbody></table>
-        <p style="font-size:13px;color:var(--muted);margin-top:8px">Bu ballar mərkəzin lisenziyalı dəstindən mütəxəssis tərəfindən daxil edilib.</p>
-      </div>`:''}
-
-      <div class="rep-sec">
-        <div class="sh"><div class="ic ic-blue">${I.chart}</div><h3>Sahələr üzrə müşahidə xülasəsi</h3></div>
-        ${results.map(r=>`
-          <div class="dom-result">
-            <div class="top"><h4>${r.d.name}</h4><span class="band ${r.band.key}">${r.band.label}</span></div>
-            <div class="dom-bar"><i style="width:${Math.max(6,r.avg/3*100)}%;background:${r.band.color}"></i></div>
-            <div class="exp">${domainExplain(r.d.name,r.band)}</div>
-            ${offVals[r.d.id]!==undefined?`<div class="official-line">Rəsmi bal: ${offVals[r.d.id]}</div>`:''}
-            ${r.note?`<div class="official-line" style="background:#FBF3E9;color:#7a5a23">Müşahidə qeydi: ${r.note}</div>`:''}
-          </div>`).join('')}
-      </div>
-
-      <div class="rep-sec">
-        <div class="sh"><div class="ic ic-blue">${I.stetho}</div><h3>Mütəxəssis üçün diaqnostik mülahizələr</h3></div>
-        <div class="callout note">
-          <strong>Vacib:</strong> Aşağıdakılar qərar dəstəyi məqsədi daşıyır. Yekun diaqnoz, rəsmi bal və norma müqayisəsi həmişə lisenziyalı dəst və ixtisaslı mütəxəssisin klinik mühakiməsi ilə müəyyən edilir.
-        </div>
-        <div style="margin-top:14px">${diagnosticText(t,sorted,offRows.length>0)}</div>
-      </div>
-
-      <div class="rep-sec">
-        <div class="sh"><div class="ic ic-orange">${I.target}</div><h3>Mütəxəssisə tövsiyələr — nəyə diqqət edilməli</h3></div>
-        ${sorted.length? `<ul class="rec-list">${
-          sorted.flatMap(r=>(t.guide[r.d.id]?.focus||[]).map(f=>`<li><span class="b"></span><div><b>${r.d.name}:</b> ${f}</div></li>`)).join('')
-        }</ul>` : `<ul class="rec-list"><li><span class="b"></span><div>Hazırda xüsusi prioritet sahə qeyd olunmayıb. Mövcud güclü tərəfləri möhkəmləndirin və müntəzəm izləməni davam etdirin.</div></li></ul>`}
-      </div>
-
-      <div class="rep-sec">
-        <div class="sh"><div class="ic ic-orange">${I.heart}</div><h3>Valideynə tövsiyələr — evdə nə etməli</h3></div>
-        <div class="parent-card">
-          <p style="font-size:14.5px;color:var(--ink-soft)">Hörmətli valideyn, aşağıdakılar uşağınızla evdə görə biləcəyiniz sadə, gündəlik işlərdir. Onları oyun kimi, təzyiqsiz tətbiq edin — ardıcıllıq nəticədən vacibdir.</p>
-          ${(sorted.length?sorted:results.slice(0,1)).map(r=>{
-            const g=t.guide[r.d.id]; if(!g) return '';
-            return `<div class="parent-block">
-              <h5>${I.heart} ${r.d.name}</h5>
-              <p>${g.parentIntro}</p>
-              <ul>${g.parentTips.map(x=>`<li>${x}</li>`).join('')}</ul>
-              ${g.games.map(gm=>`<div class="game"><div class="gi">${gm.e}</div><div class="gt"><b>${gm.t}</b>${gm.d}</div></div>`).join('')}
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-
-    </div>
-    <div class="rep-actions">
-      <button class="btn-ghost" onclick="saveReport('${testId}')">${I.save} Hesabatı yadda saxla</button>
-      <button class="btn-ghost" onclick="window.print()">${I.print} Çap et / PDF</button>
-      <button class="btn-wa" onclick="sendWA('${testId}')">${I.wa} WhatsApp-a göndər</button>
-    </div>
-   </div>`;
-
-  document.getElementById('reportArea').innerHTML = reportHtml;
-  LAST_REPORT_TEXT = buildPlainReport(t, child, cage, spec, prof, date, results, offRows, offVals, sorted);
-  document.getElementById('reportArea').scrollIntoView({behavior:'smooth',block:'start'});
+  return out;
 }
 
-function diagnosticText(t, flagged, hasOfficial){
-  if(!flagged.length){
-    return `<p style="font-size:14.5px;color:var(--ink-soft)">Müşahidə profili bütün sahələrdə yaşa uyğun mənzərə göstərir. Klinik narahatlıq doğuran qabarıq nümunə qeyd olunmayıb. ${hasOfficial?'Daxil edilmiş rəsmi ballarla birlikdə qiymətləndirildikdə, ':''}izləmə və profilaktik dəstək kifayətdir. Profil dəyişərsə, təkrar qiymətləndirmə planlaşdırıla bilər.</p>`;
-  }
-  const names = flagged.map(r=>`<b>${r.d.name}</b> (${r.band.label.toLowerCase()})`).join(', ');
-  return `<p style="font-size:14.5px;color:var(--ink-soft)">Müşahidə profili əsasən bu sahələrdə diqqət tələb edir: ${names}. Bu nümunə ${t.name} alətinin ölçdüyü konstruktlarla uyğun gəlir və mütəxəssisin klinik formulasiyasında nəzərə alınmalıdır. ${hasOfficial?'Daxil edilmiş rəsmi ballarla birgə təhlil olunmalı; ':''}ehtiyac olduqda tamamlayıcı qiymətləndirmələrlə (məs. müşahidə + ailə müsahibəsi + adaptiv funksiya) dəqiqləşdirilməlidir. Diferensial diaqnostika və yekun qərar lisenziyalı protokol əsasında mütəxəssis tərəfindən verilir.</p>`;
-}
+/* ============ NƏTİCƏ ============ */
+window.RESULT=function(id){
+  captureWA(id);
+  if(answered(id)<3){ alert(t("fill_more")); return; }
+  CUR.mode="result";
+  var x=D.tests[id], f=STATE.form[id];
+  var child=((f.name||"")+" "+(f.surname||"")).trim();
+  var spec=((f.sname||"")+" "+(f.ssurname||"")).trim();
+  var prof=(f.prof!==undefined&&f.prof!=="")?L(D.professions[+f.prof]):"";
+  var who=[]; if(child)who.push(child+(f.age?" · "+f.age:"")); if(spec)who.push(spec+(prof?" ("+prof+")":""));
+  var stats=domainStats(id);
 
-/* ----------------- DÜZ MƏTN HESABAT (WhatsApp/fayl) ----------------- */
-function buildPlainReport(t,child,cage,spec,prof,date,results,offRows,offVals,sorted){
-  let s=`*${CONFIG.centerName} — Diaqnostik hesabat*\n${t.full}\n\n`;
-  s+=`👤 Uşaq: ${child}\n🎂 Yaş: ${cage}\n👩‍⚕️ Mütəxəssis: ${spec} (${prof})\n📅 Tarix: ${date}\n`;
-  s+=`\n*Sahələr üzrə xülasə:*\n`;
-  results.forEach(r=>{ s+=`• ${r.d.name}: ${r.band.label}${offVals[r.d.id]!==undefined?` (rəsmi bal: ${offVals[r.d.id]})`:''}\n`; });
-  if(offRows.length){ s+=`\n*Rəsmi standart ballar:*\n`; offRows.forEach(o=>{ s+=`• ${o.label}: ${offVals[o.id]}\n`; }); }
-  if(sorted.length){
-    s+=`\n*Mütəxəssisə tövsiyələr:*\n`;
-    sorted.forEach(r=>{ (t.guide[r.d.id]?.focus||[]).forEach(f=>{ s+=`• ${r.d.name}: ${f}\n`; }); });
-    s+=`\n*Valideynə tövsiyələr:*\n`;
-    sorted.forEach(r=>{ const g=t.guide[r.d.id]; if(g){ s+=`▸ ${r.d.name}: ${g.parentIntro}\n`; g.parentTips.forEach(x=>s+=`   - ${x}\n`); } });
-  } else {
-    s+=`\n*Tövsiyə:* Profil yaşa uyğundur; güclü tərəfləri qoruyun və izləməni davam etdirin.\n`;
-  }
-  s+=`\n_Qeyd: Yekun diaqnoz lisenziyalı dəst və ixtisaslı mütəxəssis tərəfindən müəyyən edilir._`;
+  var html='<div class="result"><button class="back" onclick="BACK(\''+id+'\')">'+svg("back")+t("back")+'</button>'+
+    '<div class="res-head"><div class="seal">'+svg("check")+'</div>'+
+      '<h2>'+t("result_title")+'</h2><div class="who">'+x.name+(who.length?" · "+who.join(" · "):"")+'</div></div>';
+
+  /* rəsmi ballar */
+  var offTags="";
+  x.official.forEach(function(o,i){ var v=STATE.official[id][i]; if(v) offTags+='<div class="off-tag">'+L(o.label)+': <b>'+v+'</b></div>'; });
+  if(offTags) html+='<div class="res-sec"><div class="rh">'+t("res_official")+'</div><div class="off-tags">'+offTags+'</div></div>';
+
+  /* sahə xülasəsi */
+  html+='<div class="res-sec panel" style="padding:22px 24px"><div class="rh">'+t("res_domains")+'</div>';
+  stats.forEach(function(s){
+    html+='<div class="dom-row"><span class="dn">'+s.title+'</span>'+
+      '<span class="bar"><i style="width:'+BANDPCT[s.band]+'%;background:'+BANDCOL[s.band]+'"></i></span>'+
+      '<span class="badge '+s.band+'">'+t(BANDLBL[s.band])+'</span></div>';
+  });
+  html+='</div>';
+
+  /* diaqnostik mülahizələr */
+  var flagged=stats.filter(function(s){return s.band==="high"||s.band==="crit";});
+  html+='<div class="res-sec panel" style="padding:22px 24px"><div class="rh">'+t("res_diag")+'</div>';
+  if(flagged.length){
+    html+='<p class="explain">'+DIAG.intro[LANG]+'</p><ul class="rec-list" style="margin-top:10px">';
+    flagged.forEach(function(s){ html+='<li><b>'+s.title+'</b> — '+EXPL[s.band][LANG]+'</li>'; });
+    html+='</ul>';
+  } else { html+='<p class="explain">'+DIAG.none[LANG]+'</p>'; }
+  html+='<div class="disc">'+t("disclaimer")+'</div></div>';
+
+  /* mütəxəssisə tövsiyələr */
+  html+='<div class="res-sec panel" style="padding:22px 24px"><div class="rh">'+t("res_spec")+'</div><ul class="rec-list">';
+  x.specialist.forEach(function(s){ html+="<li>"+L(s)+"</li>"; });
+  html+='</ul></div>';
+
+  /* valideynə */
+  html+='<div class="res-sec parent-box"><div class="rh">'+t("res_parent")+'</div>'+
+    '<p class="explain" style="margin-bottom:12px">'+L(x.parentIntro)+'</p><ul class="rec-list">';
+  x.parentTips.forEach(function(s){ html+="<li>"+L(s)+"</li>"; });
+  html+='</ul></div>';
+
+  /* oyunlar */
+  html+='<div class="games-box"><div class="rh">'+t("res_games")+'</div><ul class="rec-list">';
+  x.games.forEach(function(s){ html+="<li>"+L(s)+"</li>"; });
+  html+='</ul></div>';
+
+  /* düymələr */
+  html+='<div class="rep-actions">'+
+    '<button class="btn btn-wa" onclick="WA(\''+id+'\')">'+svg("wa")+t("send_wa")+'</button>'+
+    '<button class="btn btn-gold" onclick="SAVE(\''+id+'\')">'+svg("dl")+t("save_report")+'</button>'+
+    '<button class="btn btn-ghost" onclick="window.print()">'+svg("print")+t("print_pdf")+'</button>'+
+    '<button class="btn btn-ghost" onclick="BACK(\''+id+'\')">'+svg("edit")+t("edit_again")+'</button>'+
+    '</div></div>';
+
+  LAST_REPORT_TEXT=buildPlainReport(id,child,spec,prof,stats,flagged);
+  document.getElementById("testPage").innerHTML=html;
+  window.scrollTo({top:0,behavior:"smooth"});
+};
+window.BACK=function(id){ CUR.mode="form"; renderTestPage(id); };
+
+/* ============ MƏTN HESABAT (WhatsApp/yükləmə) ============ */
+function buildPlainReport(id,child,spec,prof,stats,flagged){
+  var x=D.tests[id], s="*"+t("center_full")+"*\n"+t("result_title")+" — "+x.name+"\n"+L(x.full)+"\n\n";
+  if(child) s+="👤 "+child+"\n";
+  if(spec)  s+="🩺 "+spec+(prof?" ("+prof+")":"")+"\n";
+  var off=[]; x.official.forEach(function(o,i){ var v=STATE.official[id][i]; if(v) off.push(L(o.label)+": "+v); });
+  if(off.length) s+="\n📊 "+t("res_official")+":\n- "+off.join("\n- ")+"\n";
+  s+="\n📋 "+t("res_domains")+":\n";
+  stats.forEach(function(d){ s+="- "+d.title+": "+t(BANDLBL[d.band])+"\n"; });
+  if(flagged.length){ s+="\n⚠️ "+t("res_diag")+":\n"; flagged.forEach(function(d){ s+="- "+d.title+" — "+EXPL[d.band][LANG]+"\n"; }); }
+  s+="\n👪 "+t("res_parent")+":\n"; x.parentTips.forEach(function(p){ s+="- "+L(p)+"\n"; });
+  s+="\n🎲 "+t("res_games")+":\n"; x.games.forEach(function(g){ s+="- "+L(g)+"\n"; });
+  s+="\n_"+t("disclaimer")+"_";
   return s;
 }
+window.WA=function(id){
+  captureWA(id);
+  var num=(STATE.form[id].wa||"").replace(/[^0-9]/g,"");
+  if(!num) num="994554157215";
+  window.open("https://wa.me/"+num+"?text="+encodeURIComponent(LAST_REPORT_TEXT),"_blank");
+};
+window.SAVE=function(id){
+  var x=D.tests[id];
+  var body=LAST_REPORT_TEXT.replace(/\*/g,"").replace(/_/g,"").replace(/\n/g,"<br>");
+  var doc='<!DOCTYPE html><html lang="'+LANG+'"><head><meta charset="UTF-8"><title>'+t("result_title")+" — "+x.name+'</title>'+
+    '<style>body{font-family:Segoe UI,Arial,sans-serif;max-width:760px;margin:34px auto;padding:0 22px;color:#1a1525;line-height:1.7}'+
+    'h1{font-size:22px;color:#6A0000}.disc{margin-top:24px;padding:14px;background:#f5efe6;border-radius:10px;font-size:13px;color:#5b5550}</style></head>'+
+    '<body><h1>'+t("center_full")+'</h1><div>'+body+'</div></body></html>';
+  var blob=new Blob([doc],{type:"text/html"});
+  var a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=(x.name+"_"+(STATE.form[id].surname||"hesabat")).replace(/\s+/g,"_")+".html";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+};
 
-function sendWA(testId){
-  let num = getField('f_wa').replace(/[^0-9]/g,'');
-  if(!num) num = CONFIG.defaultWA;
-  const text = encodeURIComponent(LAST_REPORT_TEXT);
-  const url = `https://wa.me/${num}?text=${text}`;
-  window.open(url,'_blank');
+/* ============ SCROLL EFEKTLƏRİ ============ */
+var io;
+function observeReveal(){
+  if(!("IntersectionObserver" in window)){ document.querySelectorAll(".rv").forEach(function(e){e.classList.add("in");}); return; }
+  if(io) io.disconnect();
+  io=new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } }); },{threshold:.12});
+  document.querySelectorAll(".rv:not(.in)").forEach(function(e){ io.observe(e); });
+}
+function parallax(){
+  var bg=document.getElementById("heroBg");
+  if(bg){ var y=window.scrollY; if(y<700) bg.style.transform="translateY("+(y*0.28)+"px)"; }
 }
 
-function saveReport(testId){
-  const t=TESTS[testId];
-  const card=document.getElementById('reportCard').outerHTML;
-  const child = (getField('f_cname')+'_'+getField('f_csurname')).trim()||'hesabat';
-  const doc=`<!DOCTYPE html><html lang="az"><head><meta charset="utf-8"><title>${t.name} hesabat</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>body{font-family:'Plus Jakarta Sans',sans-serif;background:#F3F6F4;margin:0;padding:24px;color:#15302E}
-  h2,h3,h4,h5{font-family:'Bricolage Grotesque',sans-serif;margin:0}
-  ${document.querySelector('style').innerHTML}</style></head>
-  <body><div class="wrap" style="max-width:820px">${card}</div></body></html>`;
-  const blob=new Blob([doc],{type:'text/html;charset=utf-8'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`${t.name}_${child}.html`.replace(/\s+/g,'_');
-  a.click();
-  URL.revokeObjectURL(a.href);
+/* ============ DİL KEÇİDİ ============ */
+function setLang(l){
+  if(l===LANG) return;
+  if(CUR.view==="test") captureWA(CUR.test);
+  LANG=l;
+  var bs=document.querySelectorAll("#langSwitch button");
+  for(var i=0;i<bs.length;i++) bs[i].classList.toggle("active", bs[i].getAttribute("data-lang")===l);
+  applyStatic(); buildNav(); renderHome();
+  if(CUR.view==="test"){
+    if(CUR.mode==="result") window.RESULT(CUR.test);
+    else renderTestPage(CUR.test);
+  }
 }
 
-/* ----------------- BAŞLAT ----------------- */
-renderHome();
+/* ============ BAŞLAT ============ */
+function init(){
+  applyStatic();
+  buildNav();
+  renderHome();
+  var bs=document.querySelectorAll("#langSwitch button");
+  for(var i=0;i<bs.length;i++)(function(b){ b.onclick=function(){ setLang(b.getAttribute("data-lang")); }; })(bs[i]);
+  window.addEventListener("scroll", parallax, {passive:true});
+  observeReveal();
+}
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init);
+else init();
+})();
