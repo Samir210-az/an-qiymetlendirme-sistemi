@@ -48,10 +48,31 @@
   .menu-btn{display:none;margin-left:6px;background:none;border:none;cursor:pointer;color:var(--bordo)}
   .menu-btn svg{width:26px;height:26px}
 
-  /* ---------- HERO ---------- */
-  .hero{position:relative;overflow:hidden;background:var(--bordo2)}
-  .hero-bg{position:absolute;inset:-12% 0 0 0;height:124%;background-size:cover;background-position:center;will-change:transform;filter:saturate(1.05)}
-  .hero-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,rgba(66,0,0,.92) 0%,rgba(106,0,0,.82) 42%,rgba(66,0,0,.4) 100%)}
+  /* ---------- HERO (an-paketler tərzi fon) ---------- */
+  .hero{position:relative;overflow:hidden;background:#070310;min-height:86vh;display:flex;align-items:center}
+  .hero-bg{position:absolute;inset:0;will-change:transform;
+    background:radial-gradient(ellipse 80% 60% at 28% 28%,rgba(106,0,0,.55) 0%,transparent 65%),
+      radial-gradient(ellipse 55% 55% at 85% 78%,rgba(75,58,122,.34) 0%,transparent 60%),
+      linear-gradient(180deg,#1A1525 0%,#060310 100%)}
+  .hero-photo{position:absolute;inset:0;background:url('images/an1.jpg') center/cover no-repeat;opacity:.12;will-change:transform}
+  .hero-fx{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+  .hero-orb{position:absolute;border-radius:50%;filter:blur(80px);animation:orbPulse 6s ease-in-out infinite alternate}
+  .hero-orb-1{width:480px;height:480px;top:-18%;left:-12%;background:rgba(106,0,0,.32)}
+  .hero-orb-2{width:380px;height:380px;bottom:-14%;right:-10%;background:rgba(75,58,122,.26);animation-delay:-3s}
+  .hero-orb-3{width:300px;height:300px;top:34%;left:46%;background:rgba(201,151,58,.13);animation-delay:-1.5s}
+  @keyframes orbPulse{from{transform:scale(1)}to{transform:scale(1.15)}}
+  .hero-shape{position:absolute;top:50%;left:50%;border:1px solid rgba(201,151,58,.14);border-radius:50%;animation:shapeSpin linear infinite}
+  .hs1{width:640px;height:640px;animation-duration:44s}
+  .hs2{width:440px;height:440px;animation-duration:32s;animation-direction:reverse;border-color:rgba(75,58,122,.16)}
+  .hs3{width:250px;height:250px;animation-duration:22s;border-color:rgba(201,151,58,.22)}
+  @keyframes shapeSpin{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  .particle{position:absolute;border-radius:50%;background:var(--gold2);opacity:0;animation:floatUp linear infinite}
+  @keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:0}10%{opacity:.55}90%{opacity:.18}100%{transform:translateY(-92vh) scale(.3);opacity:0}}
+  .fly{position:absolute;display:grid;place-items:center;border-radius:14px;color:var(--gold2);
+    background:rgba(232,185,106,.07);border:1px solid rgba(232,185,106,.16);backdrop-filter:blur(2px);
+    animation:floaty ease-in-out infinite alternate}
+  .fly svg{width:54%;height:54%}
+  @keyframes floaty{from{transform:translateY(0) rotate(-5deg)}to{transform:translateY(-18px) rotate(5deg)}}
   .hero-in{position:relative;z-index:2;padding:78px 0 84px;color:#fff}
   .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--gold2);border:1px solid rgba(232,185,106,.4);padding:7px 15px;border-radius:100px;margin-bottom:22px}
   .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--gold2);box-shadow:0 0 0 4px rgba(232,185,106,.22)}
@@ -281,7 +302,13 @@
 <!-- ============ HOME ============ -->
 <main id="view-home" class="view active">
   <section class="hero">
-    <div class="hero-bg" id="heroBg" style="background-image:url('images/an1.jpg')"></div>
+    <div class="hero-bg" id="heroBg"></div>
+    <div class="hero-photo" id="heroPhoto"></div>
+    <div class="hero-fx">
+      <div class="hero-shape hs1"></div><div class="hero-shape hs2"></div><div class="hero-shape hs3"></div>
+      <div class="hero-orb hero-orb-1"></div><div class="hero-orb hero-orb-2"></div><div class="hero-orb hero-orb-3"></div>
+      <div id="heroFly"></div>
+    </div>
     <div class="wrap hero-in">
       <span class="eyebrow"><span class="dot"></span><span data-i18n="hero_eyebrow"></span></span>
       <h1><span data-i18n="hero_title_a"></span> <em data-i18n="hero_title_em"></em> <span data-i18n="hero_title_b"></span></h1>
@@ -325,10 +352,6 @@
     <div class="wrap">
       <div class="gallery rv">
         <div class="g wide" style="background-image:url('images/an3.jpg')"></div>
-        <div class="g" style="background-image:url('images/an2.jpg')"></div>
-        <div class="g" style="background-image:url('images/an5.jpg')"></div>
-        <div class="g" style="background-image:url('images/an6.jpg')"></div>
-        <div class="g" style="background-image:url('images/office.jpg')"></div>
         <div class="g wide" style="background-image:url('images/an7.jpg')"></div>
       </div>
     </div>

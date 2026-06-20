@@ -392,8 +392,46 @@ function observeReveal(){
   document.querySelectorAll(".rv:not(.in)").forEach(function(e){ io.observe(e); });
 }
 function parallax(){
-  var bg=document.getElementById("heroBg");
-  if(bg){ var y=window.scrollY; if(y<700) bg.style.transform="translateY("+(y*0.28)+"px)"; }
+  var y=window.scrollY; if(y>820) return;
+  var bg=document.getElementById("heroBg"), ph=document.getElementById("heroPhoto");
+  if(bg) bg.style.transform="translateY("+(y*0.18)+"px)";
+  if(ph) ph.style.transform="translateY("+(y*0.34)+"px) scale(1.04)";
+}
+
+/* hero üzərində uçuşan ikonlar + hissəciklər */
+var FLY=[
+  {ic:"brain", t:14, l:60, s:58, d:5.2},
+  {ic:"puzzle",t:30, l:86, s:46, d:6.4},
+  {ic:"blocks",t:58, l:78, s:52, d:5.8},
+  {ic:"heart", t:72, l:58, s:40, d:6.0},
+  {ic:"chat",  t:22, l:50, s:42, d:7.0},
+  {ic:"star",  t:50, l:92, s:36, d:5.4},
+  {ic:"abc",   t:78, l:84, s:44, d:6.6}
+];
+var FLYIC={
+  brain:'<path d="M9 4a3 3 0 00-3 3 3 3 0 00-1.5 5.6A3 3 0 006 18a3 3 0 003 2V4z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M15 4a3 3 0 013 3 3 3 0 011.5 5.6A3 3 0 0118 18a3 3 0 01-3 2V4z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
+  puzzle:'<path d="M10 4h4v2.5a1.5 1.5 0 103 0V4h2a1 1 0 011 1v3.5a1.5 1.5 0 100 3V19a1 1 0 01-1 1h-3.5a1.5 1.5 0 11-3 0H6a1 1 0 01-1-1v-4a1.5 1.5 0 100-3V5a1 1 0 011-1h2.5a1.5 1.5 0 113 0z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
+  blocks:'<rect x="4" y="11" width="8" height="8" rx="1.4" stroke="currentColor" stroke-width="1.5"/><rect x="13" y="13" width="6.5" height="6.5" rx="1.2" stroke="currentColor" stroke-width="1.5"/><path d="M8 11V6.5L11 4l3 2.5V11" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+  heart:'<path d="M12 20s-7-4.4-7-9.5A4.2 4.2 0 0112 8a4.2 4.2 0 017 2.5C19 15.6 12 20 12 20z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+  chat:'<path d="M4 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H9l-4 4v-4H6a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 9h8M8 12h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+  star:'<path d="M12 3.5l2.5 5.3 5.8.7-4.3 4 1.1 5.7-5.1-2.8-5.1 2.8 1.1-5.7-4.3-4 5.8-.7z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
+  abc:'<path d="M4 17l2.5-7L9 17M4.8 14.5h3.4M13 17V9h2.2a2 2 0 010 4H13m0 0h2.6a2 2 0 010 4z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'
+};
+function decorateHero(){
+  var box=document.getElementById("heroFly"); if(!box) return;
+  var h="";
+  FLY.forEach(function(f,i){
+    h+='<div class="fly" style="top:'+f.t+'%;left:'+f.l+'%;width:'+f.s+'px;height:'+f.s+'px;'+
+       'animation-duration:'+f.d+'s;animation-delay:'+(-i*0.5)+'s">'+
+       '<svg viewBox="0 0 24 24" fill="none">'+FLYIC[f.ic]+'</svg></div>';
+  });
+  for(var p=0;p<20;p++){
+    var sz=(Math.random()*5+3).toFixed(1);
+    h+='<div class="particle" style="left:'+(Math.random()*100).toFixed(1)+'%;top:'+(100+Math.random()*15).toFixed(0)+'%;'+
+       'width:'+sz+'px;height:'+sz+'px;animation-duration:'+(Math.random()*10+9).toFixed(1)+'s;'+
+       'animation-delay:'+(-Math.random()*14).toFixed(1)+'s"></div>';
+  }
+  box.innerHTML=h;
 }
 
 /* ============ DİL KEÇİDİ ============ */
@@ -415,6 +453,7 @@ function init(){
   applyStatic();
   buildNav();
   renderHome();
+  decorateHero();
   var bs=document.querySelectorAll("#langSwitch button");
   for(var i=0;i<bs.length;i++)(function(b){ b.onclick=function(){ setLang(b.getAttribute("data-lang")); }; })(bs[i]);
   window.addEventListener("scroll", parallax, {passive:true});
