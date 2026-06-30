@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>AN Psixoloji Mərkəzi — Diaqnostik Qiymətləndirmə</title>
 <link rel="icon" type="image/png" href="logo.png" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-192.png" />
 <meta name="theme-color" content="#6A0000" />
 <meta name="description" content="AN Psixoloji Dəstək və Reabilitasiya Mərkəzi — xüsusi qayğıya ehtiyacı olan uşaqlar üçün diaqnostik qiymətləndirmə sistemi." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -386,5 +388,12 @@
 
 <script src="data.js"></script>
 <script src="app.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
 </body>
 </html>
