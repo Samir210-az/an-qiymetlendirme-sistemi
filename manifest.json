@@ -1,0 +1,17 @@
+{
+  "name": "AN Psixoloji Mərkəzi — Diaqnostik Qiymətləndirmə",
+  "short_name": "AN Qiymətləndirmə",
+  "description": "AN Psixoloji Dəstək və Reabilitasiya Mərkəzi — xüsusi qayğıya ehtiyacı olan uşaqlar üçün diaqnostik qiymətləndirmə sistemi (ADOS-2, ADI-R, WISC-V, Vineland-3, Leiter-3, Sensory Profile 2)",
+  "start_url": "/an-qiymetlendirme-sistemi/",
+  "scope": "/an-qiymetlendirme-sistemi/",
+  "display": "standalone",
+  "background_color": "#FAF6F0",
+  "theme_color": "#6A0000",
+  "orientation": "portrait",
+  "lang": "az",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ],
+  "categories": ["medical", "health", "education"]
+}
