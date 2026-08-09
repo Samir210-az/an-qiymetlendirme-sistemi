@@ -405,6 +405,16 @@
         tapTimer = setTimeout(function(){ tapCount = 0; }, 900);
       });
     }
+    /* "Nəticəni göstər" (RESULT) funksiyasını sarıyırıq — sual seçmədən
+       birbaşa nəticəyə keçmə boşluğunu bağlamaq üçün */
+    if(window.LICENSE && typeof window.RESULT === 'function'){
+      var _origResult = window.RESULT;
+      window.RESULT = function(){
+        if(LICENSE.isVerified()){ return _origResult.apply(this, arguments); }
+        var args = arguments, self = this;
+        window.LICENSE._openGate(function(){ _origResult.apply(self, args); });
+      };
+    }
   });
 })();
 </script>
