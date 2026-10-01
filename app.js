@@ -280,6 +280,18 @@ function domainStats(id){
   return out;
 }
 
+function expTail(b){
+  var p=EXPL[b][LANG].split("; "), s=p[p.length-1];
+  return s;
+}
+function groupFlagged(list){
+  var out=[];
+  ["crit","high"].forEach(function(b){
+    var ts=list.filter(function(s){return s.band===b;}).map(function(s){return s.title;});
+    if(ts.length) out.push({band:b,titles:ts});
+  });
+  return out;
+}
 /* ============ NƏTİCƏ ============ */
 window.RESULT=function(id){
   captureWA(id);
@@ -315,7 +327,7 @@ window.RESULT=function(id){
   html+='<div class="res-sec panel" style="padding:22px 24px"><div class="rh">'+t("res_diag")+'</div>';
   if(flagged.length){
     html+='<p class="explain">'+DIAG.intro[LANG]+'</p><ul class="rec-list" style="margin-top:10px">';
-    flagged.forEach(function(s){ html+='<li><b>'+s.title+'</b> — '+EXPL[s.band][LANG]+'</li>'; });
+    groupFlagged(flagged).forEach(function(g){ html+='<li><b>'+t(BANDLBL[g.band])+'</b>: '+expTail(g.band)+'<br><span class="grp-list">'+g.titles.join(" · ")+'</span></li>'; });
     html+='</ul>';
   } else { html+='<p class="explain">'+DIAG.none[LANG]+'</p>'; }
   html+='<div class="disc">'+t("disclaimer")+'</div></div>';
@@ -359,7 +371,7 @@ function buildPlainReport(id,child,spec,prof,stats,flagged){
   if(off.length) s+="\n"+t("res_official")+":\n- "+off.join("\n- ")+"\n";
   s+="\n"+t("res_domains")+":\n";
   stats.forEach(function(d){ s+="- "+d.title+": "+t(BANDLBL[d.band])+"\n"; });
-  if(flagged.length){ s+="\n"+t("res_diag")+":\n"; flagged.forEach(function(d){ s+="- "+d.title+" — "+EXPL[d.band][LANG]+"\n"; }); }
+  if(flagged.length){ s+="\n"+t("res_diag")+":\n"; groupFlagged(flagged).forEach(function(g){ s+="- "+t(BANDLBL[g.band])+": "+expTail(g.band)+"\n  "+g.titles.join("; ")+"\n"; }); }
   s+="\n"+t("res_parent")+":\n"; x.parentTips.forEach(function(p){ s+="- "+L(p)+"\n"; });
   s+="\n"+t("res_games")+":\n"; x.games.forEach(function(g){ s+="- "+L(g)+"\n"; });
   s+="\n_"+t("disclaimer")+"_";
