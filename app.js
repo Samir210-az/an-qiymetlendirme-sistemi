@@ -353,15 +353,15 @@ window.BACK=function(id){ CUR.mode="form"; renderTestPage(id); };
 /* ============ MƏTN HESABAT (WhatsApp/yükləmə) ============ */
 function buildPlainReport(id,child,spec,prof,stats,flagged){
   var x=D.tests[id], s="*"+t("center_full")+"*\n"+t("result_title")+" — "+x.name+"\n"+L(x.full)+"\n\n";
-  if(child) s+="👤 "+child+"\n";
-  if(spec)  s+="🩺 "+spec+(prof?" ("+prof+")":"")+"\n";
+  if(child) s+=child+"\n";
+  if(spec)  s+=spec+(prof?" ("+prof+")":"")+"\n";
   var off=[]; x.official.forEach(function(o,i){ var v=STATE.official[id][i]; if(v) off.push(L(o.label)+": "+v); });
-  if(off.length) s+="\n📊 "+t("res_official")+":\n- "+off.join("\n- ")+"\n";
-  s+="\n📋 "+t("res_domains")+":\n";
+  if(off.length) s+="\n"+t("res_official")+":\n- "+off.join("\n- ")+"\n";
+  s+="\n"+t("res_domains")+":\n";
   stats.forEach(function(d){ s+="- "+d.title+": "+t(BANDLBL[d.band])+"\n"; });
-  if(flagged.length){ s+="\n⚠️ "+t("res_diag")+":\n"; flagged.forEach(function(d){ s+="- "+d.title+" — "+EXPL[d.band][LANG]+"\n"; }); }
-  s+="\n👪 "+t("res_parent")+":\n"; x.parentTips.forEach(function(p){ s+="- "+L(p)+"\n"; });
-  s+="\n🎲 "+t("res_games")+":\n"; x.games.forEach(function(g){ s+="- "+L(g)+"\n"; });
+  if(flagged.length){ s+="\n"+t("res_diag")+":\n"; flagged.forEach(function(d){ s+="- "+d.title+" — "+EXPL[d.band][LANG]+"\n"; }); }
+  s+="\n"+t("res_parent")+":\n"; x.parentTips.forEach(function(p){ s+="- "+L(p)+"\n"; });
+  s+="\n"+t("res_games")+":\n"; x.games.forEach(function(g){ s+="- "+L(g)+"\n"; });
   s+="\n_"+t("disclaimer")+"_";
   return s;
 }
