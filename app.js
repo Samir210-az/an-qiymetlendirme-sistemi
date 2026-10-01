@@ -183,15 +183,6 @@ function renderTestPage(id){
       '<div class="field full-w"><label>'+t("f_wa")+'</label><input id="f_wa" placeholder="'+t("f_wa_ph")+'" value="'+(STATE.form[id].wa||"")+'"></div>'+
     '</div></div>';
 
-  /* rəsmi ballar */
-  html+='<div class="panel"><div class="panel-head"><span class="pic">'+svg("gauge")+'</span><h3>'+t("official_kicker")+'</h3></div>'+
-    '<div class="off-note">'+t("official_note")+'</div><div class="off-grid">';
-  x.official.forEach(function(o,i){
-    html+='<div class="off-box"><label>'+L(o.label)+'</label><div class="hint">'+L(o.hint)+'</div>'+
-      '<input data-off="'+i+'" value="'+(STATE.official[id][i]||"")+'" oninput="OFF(\''+id+'\','+i+',this.value)"></div>';
-  });
-  html+='</div></div>';
-
   /* müşahidə sahələri */
   html+='<div class="panel"><div class="panel-head"><span class="pic">'+svg("eye")+'</span><h3>'+t("obs_kicker")+'</h3></div>'+
     '<div class="obs-note">'+t("obs_note")+'</div>';
@@ -213,6 +204,16 @@ function renderTestPage(id){
     html+='</div></div>';
   });
   html+='</div>'; /* panel sonu */
+
+  /* rəsmi ballar */
+  html+='<div class="panel"><div class="panel-head"><span class="pic">'+svg("gauge")+'</span><h3>'+t("official_kicker")+'</h3></div>'+
+    '<div class="off-note">'+t("official_note")+'</div><div class="off-grid">';
+  x.official.forEach(function(o,i){
+    html+='<div class="off-box"><label>'+L(o.label)+'</label><div class="hint">'+L(o.hint)+'</div>'+
+      '<input data-off="'+i+'" value="'+(STATE.official[id][i]||"")+'" oninput="OFF(\''+id+'\','+i+',this.value)"></div>';
+  });
+  html+='</div></div>';
+
 
   /* run-bar */
   html+='<div class="run-bar"><div class="wrap run-in">'+
