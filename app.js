@@ -8,7 +8,7 @@ var D = window.DATA;
 var LANG = "az";
 var STATE = { obs:{}, official:{}, form:{} };   // yaddaş (localStorage yox)
 var CUR = { view:"home", test:null, mode:"form" };
-var LAST_REPORT_TEXT = "";
+var LAST_REPORT_TEXT = "", LAST_REPORT_HTML = "";
 
 /* test → şəkil uyğunlaşması */
 var IMG = { ados2:"an1.jpg", adir:"an3.jpg", wiscv:"an2.jpg", vineland3:"an5.jpg", leiter3:"an6.jpg", sp2:"an4.jpg" };
@@ -19,30 +19,6 @@ function t(key){ var o=D.i18n[key]; return o? (o[LANG]||o.az) : key; }
 function L(obj){ return obj? (obj[LANG]||obj.az||"") : ""; }
 
 var BRAND_SUB = { az:"Diaqnostika", ru:"Диагностика", en:"Diagnostics" };
-
-/* sahə izahı şablonları (orijinal, üçdilli) */
-var EXPL = {
-  ok:{   az:"bu sahədə müşahidə olunan çətinlik yoxdur — güclü tərəf kimi görünür.",
-         ru:"в этой области трудностей не наблюдается — выглядит как сильная сторона.",
-         en:"no difficulty observed in this area — appears to be a strength." },
-  warn:{ az:"yüngül çətinlik müşahidə olunur; məqsədyönlü dəstək faydalı olar.",
-         ru:"наблюдаются лёгкие трудности; целенаправленная поддержка будет полезна.",
-         en:"mild difficulty observed; targeted support would be helpful." },
-  high:{ az:"orta səviyyəli çətinlik var; hədəflənmiş müdaxilə tövsiyə olunur.",
-         ru:"умеренные трудности; рекомендуется целенаправленное вмешательство.",
-         en:"moderate difficulty; targeted intervention is recommended." },
-  crit:{ az:"əhəmiyyətli çətinlik müşahidə olunur; prioritet diqqət lazımdır.",
-         ru:"значительные трудности; требуется приоритетное внимание.",
-         en:"significant difficulty observed; priority attention is needed." }
-};
-var DIAG = {
-  intro:{ az:"Aşağıdakı sahələrdə daha yüksək çətinlik müşahidə olundu. Bunlar diaqnoz deyil — mütəxəssis üçün diqqət nöqtələridir:",
-          ru:"В следующих областях наблюдались более высокие трудности. Это не диагноз, а точки внимания для специалиста:",
-          en:"Higher difficulty was observed in the following areas. These are not a diagnosis — they are points of attention for the specialist:" },
-  none:{  az:"Müşahidə bəndləri üzrə əhəmiyyətli çətinlik qeyd olunmadı. Yenə də klinik mülahizə və rəsmi bal əsasdır.",
-          ru:"По пунктам наблюдения значительных трудностей не отмечено. Тем не менее основой остаются клиническое суждение и официальный балл.",
-          en:"No significant difficulty was flagged across the observation items. Clinical judgment and the official score remain primary." }
-};
 
 /* ---- SVG ikonlar ---- */
 var ICON = {
@@ -267,114 +243,165 @@ function updateProgress(id){
 /* ============ BAND MƏNTİQİ ============ */
 function bandFor(avg){ if(avg<0.6)return"ok"; if(avg<1.4)return"warn"; if(avg<2.2)return"high"; return"crit"; }
 var BANDLBL={ok:"band_ok",warn:"band_warn",high:"band_high",crit:"band_crit"};
-var BANDPCT={ok:18,warn:45,high:72,crit:95};
-var BANDCOL={ok:"var(--sage)",warn:"var(--gold)",high:"#D98324",crit:"var(--bordo)"};
 
-function domainStats(id){
-  var x=D.tests[id], out=[];
-  x.domains.forEach(function(d){
-    var sum=0,n=0;
-    d.items.forEach(function(it){ var v=STATE.obs[id][it.id]; if(v!==undefined){sum+=v;n++;} });
-    if(n>0){ var avg=sum/n; out.push({title:L(d.title), avg:avg, band:bandFor(avg), n:n}); }
+function fmt(s,m){ return s.replace(/\{(\w+)\}/g,function(_,k){ return m[k]!==undefined?m[k]:""; }); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function splitTitle(d){
+  var s=L(d.title), m=s.match(/^(.*?)\s*\((VCI|VSI|FRI|WMI|PSI)\)\s*$/);
+  return m? {name:m[1],tag:m[2]} : {name:s,tag:""};
+}
+function titleHtml(d){
+  var p=splitTitle(d);
+  return esc(p.name)+' <span class="mn">('+esc(L(d.mean))+')</span>'+(p.tag?' <span class="tg">'+p.tag+'</span>':'');
+}
+function fx(v){ return (Math.round(v*10)/10).toFixed(1); }
+
+function repData(id){
+  var rows=[];
+  D.tests[id].domains.forEach(function(d){
+    var items=[], sum=0, n=0;
+    d.items.forEach(function(it){
+      var v=STATE.obs[id][it.id];
+      items.push({t:L(it.t),v:v});
+      if(v!==undefined){ sum+=v; n++; }
+    });
+    if(n>0){ var a=sum/n; rows.push({d:d,items:items,avg:a,band:bandFor(a),tag:splitTitle(d).tag}); }
   });
-  return out;
+  return rows;
 }
 
-function expTail(b){
-  var p=EXPL[b][LANG].split("; "), s=p[p.length-1];
-  return s;
-}
-function groupFlagged(list){
-  var out=[];
-  ["crit","high"].forEach(function(b){
-    var ts=list.filter(function(s){return s.band===b;}).map(function(s){return s.title;});
-    if(ts.length) out.push({band:b,titles:ts});
+function reportHtml(id,rows,forParent){
+  var x=D.tests[id], n=0, h="";
+  function sec(title,body,cls){ n++; return '<section class="rp-s'+(cls?" "+cls:"")+'"><h3>'+n+'. '+title+'</h3>'+body+'</section>'; }
+  var c={crit:0,high:0,warn:0,ok:0};
+  rows.forEach(function(r){ c[r.band]++; });
+  var okL=rows.filter(function(r){return r.band==="ok";}).map(function(r){return splitTitle(r.d).name;});
+  var weak=rows.filter(function(r){return r.band==="high"||r.band==="crit";}).sort(function(a,b){return b.avg-a.avg;});
+
+  var ov='<p>'+fmt(t("rp_ov1"),{n:rows.length})+'</p><p>'+fmt(t("rp_ov2"),c)+'</p>';
+  if(okL.length) ov+='<p>'+fmt(t("rp_ok_list"),{l:okL.join(", ")})+'</p>';
+  if(weak.length) ov+='<p>'+fmt(t("rp_weak_list"),{l:weak.map(function(r){return splitTitle(r.d).name;}).join(", ")})+'</p>';
+  var off=""; x.official.forEach(function(o,i){ var v=STATE.official[id][i]; if(v) off+='<span class="off">'+esc(L(o.label))+': <b>'+esc(v)+'</b></span>'; });
+  if(off) ov+='<p class="offs"><b>'+t("res_official")+':</b> '+off+'</p>';
+  h+=sec(t("rp_overview"),ov);
+
+  var groups={}, order=[];
+  rows.forEach(function(r){ if(r.tag){ if(!groups[r.tag]){groups[r.tag]=[];order.push(r.tag);} groups[r.tag].push(r); } });
+  if(order.length){
+    var gb='<p class="mut">'+t("rp_profile_note")+'</p>';
+    order.forEach(function(tg){
+      var a=groups[tg].reduce(function(s,r){return s+r.avg;},0)/groups[tg].length, b=bandFor(a);
+      gb+='<div class="gb"><span>'+esc(L(D.groups[tg]))+'</span><i><b class="'+b+'" style="width:'+Math.max(6,a/3*100)+'%"></b></i><em class="'+b+'">'+t(BANDLBL[b])+' · '+fx(a)+'/3</em></div>';
+    });
+    h+=sec(t("rp_profile"),gb);
+  }
+
+  var gp='<p class="mut">'+t("rp_gaps_note")+'</p>';
+  if(weak.length){
+    gp+='<ul class="gap">';
+    weak.forEach(function(r){ gp+='<li class="'+r.band+'"><b>'+titleHtml(r.d)+'</b> <em class="'+r.band+'">'+fx(r.avg)+'/3</em><span>'+esc(L(r.d.looks))+'</span></li>'; });
+    gp+='</ul>';
+  } else gp+='<p>'+t("rp_gaps_none")+'</p>';
+  h+=sec(t("rp_gaps"),gp);
+
+  var dt='<p class="mut">'+t("rp_detail_note")+'</p>';
+  rows.forEach(function(r){
+    dt+='<article class="'+r.band+'"><div class="ah"><h4>'+titleHtml(r.d)+'</h4><em class="'+r.band+'">'+t(BANDLBL[r.band])+' · '+fx(r.avg)+'/3</em></div>'+
+      '<p><b>'+t("rp_means")+':</b> '+esc(L(r.d.means))+'</p><p><b>'+t("rp_task")+':</b> '+esc(L(r.d.task))+'</p><ul class="it">';
+    r.items.forEach(function(it){
+      dt+='<li><span>'+esc(it.t)+'</span>'+(it.v===undefined?'<span class="pl">'+t("rp_unans")+'</span>':'<span class="pl p'+it.v+'">'+esc(L(D.scale[it.v]))+'</span>')+'</li>';
+    });
+    dt+='</ul>';
+    if(r.band!=="ok") dt+='<p class="seen"><b>'+t("rp_looks")+':</b> '+esc(L(r.d.looks))+'</p>';
+    dt+='</article>';
   });
-  return out;
+  h+=sec(t("rp_detail"),dt);
+
+  var lk=[];
+  order.forEach(function(tg){
+    var g=groups[tg].slice().sort(function(a,b){return a.avg-b.avg;});
+    if(g.length>1){
+      var lo=g[0], hi=g[g.length-1];
+      if(hi.avg-lo.avg>=1.5) lk.push(fmt(t("rp_link_spread"),{g:L(D.groups[tg]),a:splitTitle(hi.d).name,x:fx(hi.avg),b:splitTitle(lo.d).name,y:fx(lo.avg)}));
+      var wk=g.filter(function(r){return r.band==="high"||r.band==="crit";});
+      if(wk.length>1) lk.push(fmt(t("rp_link_together"),{g:L(D.groups[tg]),l:wk.map(function(r){return splitTitle(r.d).name;}).join(", ")}));
+    }
+  });
+  h+=sec(t("rp_links"),lk.length? '<ul>'+lk.map(function(s){return '<li>'+esc(s)+'</li>';}).join("")+'</ul>' : '<p>'+t("rp_links_none")+'</p>');
+
+  if(!forParent){
+    var sp='<ul>'+x.specialist.map(function(s){return '<li>'+esc(L(s))+'</li>';}).join("")+'</ul>';
+    h+=sec(t("res_spec")+' <span class="tg">'+t("rp_for_spec")+'</span>',sp,"for-spec");
+  }
+
+  var hm='<p>'+esc(L(x.parentIntro))+'</p><ul>'+x.parentTips.map(function(s){return '<li>'+esc(L(s))+'</li>';}).join("")+'</ul>';
+  if(weak.length){
+    hm+='<p><b>'+t("rp_home_intro")+'</b></p><ul>'+weak.slice(0,6).map(function(r){ return '<li><b>'+esc(splitTitle(r.d).name)+':</b> '+esc(L(r.d.support))+'</li>'; }).join("")+'</ul>';
+  }
+  hm+='<p><b>'+t("res_games")+'</b></p><ul>'+x.games.map(function(s){return '<li>'+esc(L(s))+'</li>';}).join("")+'</ul>';
+  h+=sec(t("rp_home"),hm,"par");
+  h+=sec(t("rp_school"),'<ul>'+D.school.map(function(s){return '<li>'+esc(L(s))+'</li>';}).join("")+'</ul>');
+  h+=sec(t("rp_next"),'<ol>'+D.nextsteps.map(function(s){return '<li>'+esc(L(s))+'</li>';}).join("")+'</ol>');
+  h+='<section class="rp-s disc"><b>'+t("rp_limits")+'.</b> '+t("rp_limits_txt")+'</section>';
+  return h;
 }
+
+function reportHead(id,child,spec,prof){
+  var x=D.tests[id], meta=[x.name];
+  if(child) meta.push(child);
+  if(spec) meta.push(spec+(prof?" ("+prof+")":""));
+  return '<header class="rp-h"><small>'+t("center_full")+'</small><h2>'+t("rp_title")+'</h2><p class="meta">'+esc(meta.join(" · "))+'</p></header>';
+}
+
 /* ============ NƏTİCƏ ============ */
 window.RESULT=function(id){
   captureWA(id);
   if(answered(id)<3){ alert(t("fill_more")); return; }
   CUR.mode="result";
   var x=D.tests[id], f=STATE.form[id];
-  var child=((f.name||"")+" "+(f.surname||"")).trim();
+  var child=((f.name||"")+" "+(f.surname||"")).trim()+(f.age?" · "+f.age:"");
+  child=child.replace(/^ · /,"");
   var spec=((f.sname||"")+" "+(f.ssurname||"")).trim();
   var prof=(f.prof!==undefined&&f.prof!=="")?L(D.professions[+f.prof]):"";
-  var who=[]; if(child)who.push(child+(f.age?" · "+f.age:"")); if(spec)who.push(spec+(prof?" ("+prof+")":""));
-  var stats=domainStats(id);
+  var rows=repData(id);
 
   var html='<div class="result"><button class="back" onclick="BACK(\''+id+'\')">'+svg("back")+t("back")+'</button>'+
-    '<div class="res-head"><div class="seal">'+svg("check")+'</div>'+
-      '<h2>'+t("result_title")+'</h2><div class="who">'+x.name+(who.length?" · "+who.join(" · "):"")+'</div></div>';
-
-  /* rəsmi ballar */
-  var offTags="";
-  x.official.forEach(function(o,i){ var v=STATE.official[id][i]; if(v) offTags+='<div class="off-tag">'+L(o.label)+': <b>'+v+'</b></div>'; });
-  if(offTags) html+='<div class="res-sec"><div class="rh">'+t("res_official")+'</div><div class="off-tags">'+offTags+'</div></div>';
-
-  /* sahə xülasəsi */
-  html+='<div class="res-sec panel" style="padding:22px 24px"><div class="rh">'+t("res_domains")+'</div>';
-  stats.forEach(function(s){
-    html+='<div class="dom-row"><span class="dn">'+s.title+'</span>'+
-      '<span class="bar"><i style="width:'+BANDPCT[s.band]+'%;background:'+BANDCOL[s.band]+'"></i></span>'+
-      '<span class="badge '+s.band+'">'+t(BANDLBL[s.band])+'</span></div>';
-  });
-  html+='</div>';
-
-  /* diaqnostik mülahizələr */
-  var flagged=stats.filter(function(s){return s.band==="high"||s.band==="crit";});
-  html+='<div class="res-sec panel" style="padding:22px 24px"><div class="rh">'+t("res_diag")+'</div>';
-  if(flagged.length){
-    html+='<p class="explain">'+DIAG.intro[LANG]+'</p><ul class="rec-list" style="margin-top:10px">';
-    groupFlagged(flagged).forEach(function(g){ html+='<li><b>'+t(BANDLBL[g.band])+'</b>: '+expTail(g.band)+'<br><span class="grp-list">'+g.titles.join(" · ")+'</span></li>'; });
-    html+='</ul>';
-  } else { html+='<p class="explain">'+DIAG.none[LANG]+'</p>'; }
-  html+='<div class="disc">'+t("disclaimer")+'</div></div>';
-
-  /* mütəxəssisə tövsiyələr */
-  html+='<div class="res-sec panel" style="padding:22px 24px"><div class="rh">'+t("res_spec")+'</div><ul class="rec-list">';
-  x.specialist.forEach(function(s){ html+="<li>"+L(s)+"</li>"; });
-  html+='</ul></div>';
-
-  /* valideynə */
-  html+='<div class="res-sec parent-box"><div class="rh">'+t("res_parent")+'</div>'+
-    '<p class="explain" style="margin-bottom:12px">'+L(x.parentIntro)+'</p><ul class="rec-list">';
-  x.parentTips.forEach(function(s){ html+="<li>"+L(s)+"</li>"; });
-  html+='</ul></div>';
-
-  /* oyunlar */
-  html+='<div class="games-box"><div class="rh">'+t("res_games")+'</div><ul class="rec-list">';
-  x.games.forEach(function(s){ html+="<li>"+L(s)+"</li>"; });
-  html+='</ul></div>';
-
-  /* düymələr */
-  html+='<div class="rep-actions">'+
+    '<div class="rp">'+reportHead(id,child,spec,prof)+reportHtml(id,rows,false)+'</div>'+
+    '<p class="rp-note">'+t("rp_parent_copy")+'</p>'+
+    '<div class="rep-actions">'+
     '<button class="btn btn-wa" onclick="WA(\''+id+'\')">'+svg("wa")+t("send_wa")+'</button>'+
     '<button class="btn btn-gold" onclick="SAVE(\''+id+'\')">'+svg("dl")+t("save_report")+'</button>'+
     '<button class="btn btn-ghost" onclick="window.print()">'+svg("print")+t("print_pdf")+'</button>'+
     '<button class="btn btn-ghost" onclick="BACK(\''+id+'\')">'+svg("edit")+t("edit_again")+'</button>'+
     '</div></div>';
 
-  LAST_REPORT_TEXT=buildPlainReport(id,child,spec,prof,stats,flagged);
+  LAST_REPORT_TEXT=buildPlainReport(id,child,spec,prof,rows);
+  LAST_REPORT_HTML=reportHead(id,child,spec,prof)+reportHtml(id,rows,true);
   document.getElementById("testPage").innerHTML=html;
   window.scrollTo({top:0,behavior:"smooth"});
 };
 window.BACK=function(id){ CUR.mode="form"; renderTestPage(id); };
 
-/* ============ MƏTN HESABAT (WhatsApp/yükləmə) ============ */
-function buildPlainReport(id,child,spec,prof,stats,flagged){
-  var x=D.tests[id], s="*"+t("center_full")+"*\n"+t("result_title")+" — "+x.name+"\n"+L(x.full)+"\n\n";
+/* ============ MƏTN HESABAT (WhatsApp) ============ */
+function buildPlainReport(id,child,spec,prof,rows){
+  var x=D.tests[id], c={crit:0,high:0,warn:0,ok:0};
+  rows.forEach(function(r){ c[r.band]++; });
+  var weak=rows.filter(function(r){return r.band==="high"||r.band==="crit";}).sort(function(a,b){return b.avg-a.avg;});
+  var okL=rows.filter(function(r){return r.band==="ok";}).map(function(r){return splitTitle(r.d).name;});
+  function nm(r){ var p=splitTitle(r.d); return p.name+" ("+L(r.d.mean)+")"; }
+  var s="*"+t("center_full")+"*\n"+t("rp_title")+" — "+x.name+"\n"+L(x.full)+"\n\n";
   if(child) s+=child+"\n";
   if(spec)  s+=spec+(prof?" ("+prof+")":"")+"\n";
-  var off=[]; x.official.forEach(function(o,i){ var v=STATE.official[id][i]; if(v) off.push(L(o.label)+": "+v); });
-  if(off.length) s+="\n"+t("res_official")+":\n- "+off.join("\n- ")+"\n";
-  s+="\n"+t("res_domains")+":\n";
-  stats.forEach(function(d){ s+="- "+d.title+": "+t(BANDLBL[d.band])+"\n"; });
-  if(flagged.length){ s+="\n"+t("res_diag")+":\n"; groupFlagged(flagged).forEach(function(g){ s+="- "+t(BANDLBL[g.band])+": "+expTail(g.band)+"\n  "+g.titles.join("; ")+"\n"; }); }
-  s+="\n"+t("res_parent")+":\n"; x.parentTips.forEach(function(p){ s+="- "+L(p)+"\n"; });
-  s+="\n"+t("res_games")+":\n"; x.games.forEach(function(g){ s+="- "+L(g)+"\n"; });
-  s+="\n_"+t("disclaimer")+"_";
+  s+="\n*"+t("rp_overview")+"*\n"+fmt(t("rp_ov1"),{n:rows.length})+"\n"+fmt(t("rp_ov2"),c)+"\n";
+  if(okL.length) s+=fmt(t("rp_ok_list"),{l:okL.join(", ")})+"\n";
+  if(weak.length){
+    s+="\n*"+t("rp_gaps")+"*\n";
+    weak.forEach(function(r){ s+="- "+nm(r)+" — "+t(BANDLBL[r.band])+" ("+fx(r.avg)+"/3)\n  "+L(r.d.looks)+"\n"; });
+    s+="\n*"+t("rp_home")+"*\n"+t("rp_home_intro")+"\n";
+    weak.slice(0,6).forEach(function(r){ s+="- "+splitTitle(r.d).name+": "+L(r.d.support)+"\n"; });
+  }
+  s+="\n*"+t("res_games")+"*\n"; x.games.forEach(function(g){ s+="- "+L(g)+"\n"; });
+  s+="\n_"+t("rp_limits_txt")+"_";
   return s;
 }
 window.WA=function(id){
@@ -385,11 +412,10 @@ window.WA=function(id){
 };
 window.SAVE=function(id){
   var x=D.tests[id];
-  var body=LAST_REPORT_TEXT.replace(/\*/g,"").replace(/_/g,"").replace(/\n/g,"<br>");
-  var doc='<!DOCTYPE html><html lang="'+LANG+'"><head><meta charset="UTF-8"><title>'+t("result_title")+" — "+x.name+'</title>'+
-    '<style>body{font-family:Segoe UI,Arial,sans-serif;max-width:760px;margin:34px auto;padding:0 22px;color:#1a1525;line-height:1.7}'+
-    'h1{font-size:22px;color:#6A0000}.disc{margin-top:24px;padding:14px;background:#f5efe6;border-radius:10px;font-size:13px;color:#5b5550}</style></head>'+
-    '<body><h1>'+t("center_full")+'</h1><div>'+body+'</div></body></html>';
+  var css=document.getElementById("rpCss").textContent;
+  var doc='<!DOCTYPE html><html lang="'+LANG+'"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+t("rp_title")+" — "+x.name+'</title>'+
+    '<style>body{font-family:Segoe UI,Arial,sans-serif;max-width:800px;margin:24px auto;padding:0 18px;background:#faf6f1}'+css+'</style></head>'+
+    '<body><div class="rp">'+LAST_REPORT_HTML+'</div></body></html>';
   var blob=new Blob([doc],{type:"text/html"});
   var a=document.createElement("a"); a.href=URL.createObjectURL(blob);
   a.download=(x.name+"_"+(STATE.form[id].surname||"hesabat")).replace(/\s+/g,"_")+".html";
