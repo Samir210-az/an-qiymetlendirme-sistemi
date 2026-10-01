@@ -191,7 +191,7 @@ function renderTestPage(id){
       '<div class="domain-h" onclick="this.parentNode.classList.toggle(\'open\')">'+
         '<span class="ix">'+(di+1)+'</span><h4>'+L(d.title)+'</h4>'+
         '<span class="cnt">'+d.items.length+'</span><span class="chev">'+svg("chev")+'</span></div>'+
-      '<div class="domain-body">';
+      '<div class="domain-body">'+(d.task?'<p class="dtask">'+L(d.task)+'</p>':'');
     d.items.forEach(function(it){
       var cur=STATE.obs[id][it.id];
       html+='<div class="item"><p>'+L(it.t)+'</p><div class="opts">';
