@@ -458,6 +458,8 @@ function init(){
   for(var i=0;i<bs.length;i++)(function(b){ b.onclick=function(){ setLang(b.getAttribute("data-lang")); }; })(bs[i]);
   window.addEventListener("scroll", parallax, {passive:true});
   observeReveal();
+  var hid=(location.hash||"").replace(/^#/,"");
+  if(D.tests[hid]) go("test",hid);
 }
 if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init);
 else init();
